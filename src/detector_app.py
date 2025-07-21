@@ -2,7 +2,7 @@
 
 import argparse
 import sys
-from src.detector import Detector
+from detector import Detector
 
 # Global detector instance
 _detector = None
