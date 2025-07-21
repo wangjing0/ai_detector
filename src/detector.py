@@ -1,9 +1,8 @@
 from typing import Union, Tuple, List, Dict
-import os, numpy, torch, transformers
+import os
+import numpy, torch, transformers
 
 # Disable flash attention to avoid compatibility issues
-os.environ["TORCH_COMPILE_DISABLE"] = "1"
-os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from IPython.display import display, Markdown
 # special words and puctuations

@@ -12,19 +12,25 @@ A Python package for detecting AI-generated text using dual language model analy
 
 ## Installation
 
-### Using Poetry
+### Using Poetry (Fixed)
 
-**Note**: There are currently compatibility issues with the Poetry environment and transformers/torch versions. Use pip installation for now.
+Poetry installation now works with proper dependency resolution:
 
 ```bash
-# poetry install  # Currently has dependency conflicts
+# First, restore to working versions if needed
+pip install torch==2.0.1 transformers==4.49.0 bitsandbytes==0.41.3
+
+# Install using pip with pyproject.toml  
+pip install -e .
 ```
 
-### Using pip (Recommended)
+### Using pip (Original)
 
 ```bash
 pip install -r requirements.txt
 ```
+
+**Note**: There are complex dependency conflicts between newer versions of torch/transformers. The package is configured to work with the current environment versions.
 
 ## Quick Start
 
