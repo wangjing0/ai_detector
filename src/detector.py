@@ -31,16 +31,14 @@ class Detector(object):
                                                                    device_map="auto",
                                                                    trust_remote_code=True,
                                                                    load_in_4bit=True,
-                                                                   torch_dtype=torch.bfloat16,
-                                                                   attn_implementation="eager"
+                                                                   torch_dtype=torch.float16,
                                                                    )
         self.DEVICE_1 = self.observer_model.device
         self.performer_model = AutoModelForCausalLM.from_pretrained(performer_name_or_path,
                                                                     device_map="auto",
                                                                     trust_remote_code=True,
                                                                     load_in_4bit=True,
-                                                                    torch_dtype=torch.bfloat16,
-                                                                    attn_implementation="eager"
+                                                                    torch_dtype=torch.float16,
                                                                     )
         self.DEVICE_2 = self.performer_model.device
         self.observer_model.eval()
