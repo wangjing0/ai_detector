@@ -1,5 +1,9 @@
 from typing import Union, Tuple, List, Dict
 import os, numpy, torch, transformers
+
+# Disable flash attention to avoid compatibility issues
+os.environ["TORCH_COMPILE_DISABLE"] = "1"
+os.environ["TRANSFORMERS_VERBOSITY"] = "error"
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from IPython.display import display, Markdown
 # special words and puctuations
@@ -28,14 +32,16 @@ class Detector(object):
                                                                    device_map="auto",
                                                                    trust_remote_code=True,
                                                                    load_in_4bit=True,
-                                                                   torch_dtype=torch.bfloat16 
+                                                                   torch_dtype=torch.bfloat16,
+                                                                   attn_implementation="eager"
                                                                    )
         self.DEVICE_1 = self.observer_model.device
         self.performer_model = AutoModelForCausalLM.from_pretrained(performer_name_or_path,
                                                                     device_map="auto",
                                                                     trust_remote_code=True,
                                                                     load_in_4bit=True,
-                                                                    torch_dtype=torch.bfloat16 
+                                                                    torch_dtype=torch.bfloat16,
+                                                                    attn_implementation="eager"
                                                                     )
         self.DEVICE_2 = self.performer_model.device
         self.observer_model.eval()
