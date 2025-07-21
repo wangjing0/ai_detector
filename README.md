@@ -1,50 +1,53 @@
 # AI Text Detector
 
-A Python package for detecting AI-generated text using dual language model analysis.
+A Python package for detecting AI-generated text using dual language model analysis with perplexity and cross-entropy metrics.
 
 ## Features
 
 - Detects AI-generated text using perplexity and cross-entropy analysis
 - Supports multiple detection modes (accuracy vs low false positive rate)
 - Highlights suspicious words in AI-generated content
-- Command-line interface and Python API
-- Interactive mode for multiple predictions
+- Command-line interface and interactive mode for multiple predictions
 
 ## Installation
 
-### Using Poetry (Fixed)
+### Prerequisites
 
-Poetry installation now works with proper dependency resolution:
+Install core dependencies with specific versions to avoid conflicts:
 
 ```bash
-# First, restore to working versions if needed
 pip install torch==2.0.1 transformers==4.49.0 bitsandbytes==0.41.3
-
-# Install using pip with pyproject.toml  
-pip install -e .
 ```
 
-### Using pip (Original)
 
 ```bash
+git clone https://github.com/wangjing0/ai_detector.git
+cd ai_detector
+```
+
+```bash
+# Install in development mode
+pip install -e .
+
+# Or install from requirements
 pip install -r requirements.txt
 ```
 
-**Note**: There are complex dependency conflicts between newer versions of torch/transformers. The package is configured to work with the current environment versions.
+> **Note**: This package requires specific PyTorch and Transformers versions due to dependency compatibility requirements.
 
 ## Quick Start
 
-### Command Line
+### Command Line Interface
 
 ```bash
-# Single prediction
+# Analyze a single text
 ai-detector "Your text here"
 
-# Interactive mode
+# Interactive mode for multiple texts
 ai-detector --interactive
 
-# With highlighting
-ai-detector --display-highlights "Suspicious text"
+# Display word-level highlights for suspicious content
+ai-detector --display-highlights "Text to analyze"
 ```
 
 ### Python API
@@ -52,29 +55,43 @@ ai-detector --display-highlights "Suspicious text"
 ```python
 from src.detector import Detector
 
-detector = Detector(mode='accuracy')
+# Initialize detector with preferred mode
+detector = Detector(mode='accuracy')  # or 'low_fpr'
+
+# Analyze text
 result = detector.predict("Your text here")
 
+# Display results
 print(f"Prediction: {result['prediction']}")
 print(f"Confidence: {result['confidence']:.2f}")
 ```
 
-## Configuration
+## Detection Modes
 
-The detector uses two language models:
-- **Observer Model**: Analyzes text patterns
-- **Performer Model**: Generates reference probabilities
+- **`accuracy`**: Optimized for maximum detection accuracy
+- **`low_fpr`**: Optimized for low false positive rate
 
-Default models:
-- Observer: `unsloth/Meta-Llama-3.1-8B-bnb-4bit`
-- Performer: `unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit`
+## Model Architecture
+
+The detector employs a dual model approach:
+
+| Component | Purpose | Default Model |
+|-----------|---------|---------------|
+| **Observer Model** | Analyzes text patterns and anomalies | `unsloth/Meta-Llama-3.1-8B-bnb-4bit` |
+| **Performer Model** | Generates reference probability distributions | `unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit` |
 
 ## Development
 
-```bash
-# Install with dev dependencies
-poetry install --with dev
+### Setup Development Environment
 
+```bash
+# Install with development dependencies
+poetry install --with dev
+```
+
+### Code Quality
+
+```bash
 # Run tests
 poetry run pytest
 
