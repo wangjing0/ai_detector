@@ -55,8 +55,10 @@ ai-detector --display-highlights "Text to analyze"
 ```python
 from src.detector import Detector
 
-# Initialize detector with preferred mode
-detector = Detector(mode='accuracy')  # or 'low_fpr'
+# Initialize detector with preferred models and metrics mode
+detector = Detector(observer_name_or_path="unsloth/Meta-Llama-3.1-8B-bnb-4bit",
+              performer_name_or_path="unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
+              mode='accuracy')
 
 # Analyze text
 result = detector.predict("Your text here")
@@ -66,20 +68,6 @@ print(f"Prediction: {result['prediction']}")
 print(f"Confidence: {result['confidence']:.2f}")
 ```
 
-## Detection Modes
-
-- **`accuracy`**: Optimized for maximum detection accuracy
-- **`low_fpr`**: Optimized for low false positive rate
-
-## Model Architecture
-
-The detector employs a dual model approach:
-
-| Component | Purpose | Default Model |
-|-----------|---------|---------------|
-| **Observer Model** | Analyzes text patterns and anomalies | `unsloth/Meta-Llama-3.1-8B-bnb-4bit` |
-| **Performer Model** | Generates reference probability distributions | `unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit` |
-
 ## Development
 
 ### Setup Development Environment
@@ -87,19 +75,6 @@ The detector employs a dual model approach:
 ```bash
 # Install with development dependencies
 poetry install --with dev
-```
-
-### Code Quality
-
-```bash
-# Run tests
-poetry run pytest
-
-# Format code
-poetry run black src/
-
-# Type checking
-poetry run mypy src/
 ```
 
 ## License
