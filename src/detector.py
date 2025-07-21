@@ -206,9 +206,18 @@ if __name__ == "__main__":
         
     texts = doc.split('\n\n')
     prediction=[]
-    for text in tqdm(texts):
+    for text in texts:
         text = text.strip()
         if text:
-            prediction.append(detector.predict(text))
+            result = detector.predict(text, display_text=False)
+            if result['prediction'].startswith('AI'):
+                display(Markdown(result['colored_text']))
+            else:
+                display(Markdown(result['text']))
+            
+            print(f"Score: {result['score'] :.3f}, Confidence: {result['confidence']:.3f}, Prediction: {result['prediction']}")
+            prediction.append(result)
+            print('='*70)
+            
     df =  pandas.DataFrame(prediction)
-    df
+    print(df)
