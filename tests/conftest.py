@@ -9,8 +9,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 @pytest.fixture
 def mock_models():
     """Mock the heavy model loading for faster tests"""
-    with patch('src.detector.AutoModelForCausalLM') as mock_model_class, \
-         patch('src.detector.AutoTokenizer') as mock_tokenizer_class:
+    with patch('ai_detector.detector.AutoModelForCausalLM') as mock_model_class, \
+         patch('ai_detector.detector.AutoTokenizer') as mock_tokenizer_class:
         
         mock_observer = Mock()
         mock_performer = Mock()

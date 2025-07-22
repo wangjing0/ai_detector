@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "AI-generated text detection using any language model"
 authors = ["Jing Wang <jingwang.physics@gmail.com>"]
 readme = "README.md"
-packages = [{include = "src"}]
+packages = [{include = "ai_detector", from = "src"}]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
@@ -55,7 +55,7 @@ jupyter = "^1.0.0"
 jupyter = ["ipython"]
 
 [tool.poetry.scripts]
-ai-detector = "detector_app:main"
+ai-detector = "ai_detector.detector_app:main"
 
 [tool.black]
 line-length = 88
@@ -87,4 +87,4 @@ testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"
 python_functions = "test_*"
-addopts = "--cov=src --cov-report=term-missing"
+addopts = "--cov=ai_detector --cov-report=term-missing"
