@@ -2,7 +2,7 @@ import pytest
 import torch
 import numpy as np
 from unittest.mock import Mock, patch, MagicMock
-from src.detector import Detector
+from ai_detector.detector import Detector
 
 
 class TestPredictionMethods:

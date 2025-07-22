@@ -2,7 +2,7 @@ import pytest
 import torch
 from unittest.mock import Mock, patch, MagicMock
 import numpy as np
-from src.detector import Detector, ACCURACY_THRESHOLD, FPR_THRESHOLD
+from ai_detector.detector import Detector, ACCURACY_THRESHOLD, FPR_THRESHOLD
 
 
 class TestDetectorInit:
@@ -55,7 +55,7 @@ class TestDetectorInit:
         
     def test_tokenizer_consistency_check_fail(self, mock_models):
         """Test tokenizer consistency check fails with different tokenizers"""
-        with patch('src.detector.AutoTokenizer') as mock_tokenizer_class:
+        with patch('ai_detector.detector.AutoTokenizer') as mock_tokenizer_class:
             # Create different tokenizers
             mock_tokenizer1 = Mock()
             mock_tokenizer2 = Mock()
@@ -171,7 +171,7 @@ class TestDetectorInference:
 class TestDetectorPrediction:
     """Test Detector prediction methods"""
     
-    @patch('src.detector.Detector.compute_score')
+    @patch('ai_detector.detector.Detector.compute_score')
     def test_predict_single_text(self, mock_compute_score, mock_models):
         """Test prediction for single text"""
         detector = Detector()
@@ -189,7 +189,7 @@ class TestDetectorPrediction:
         assert result['text'] == "test text"
         assert isinstance(result['confidence'], np.floating)
         
-    @patch('src.detector.Detector.compute_score') 
+    @patch('ai_detector.detector.Detector.compute_score') 
     def test_predict_batch_text(self, mock_compute_score, mock_models):
         """Test prediction for batch of texts"""
         detector = Detector()

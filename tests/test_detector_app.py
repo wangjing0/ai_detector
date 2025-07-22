@@ -8,7 +8,7 @@ import os
 # Add src to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from src.detector_app import get_detector, predict_text, main
+from ai_detector.detector_app import get_detector, predict_text, main
 
 
 class TestDetectorApp:
@@ -16,7 +16,7 @@ class TestDetectorApp:
     
     def test_get_detector_singleton(self):
         """Test that get_detector implements singleton pattern"""
-        with patch('src.detector_app.Detector') as mock_detector_class:
+        with patch('ai_detector.detector_app.Detector') as mock_detector_class:
             mock_instance = Mock()
             mock_detector_class.return_value = mock_instance
             
@@ -34,7 +34,7 @@ class TestDetectorApp:
             
     def test_get_detector_with_custom_params(self):
         """Test get_detector with custom parameters"""
-        with patch('src.detector_app.Detector') as mock_detector_class:
+        with patch('ai_detector.detector_app.Detector') as mock_detector_class:
             mock_instance = Mock()
             mock_detector_class.return_value = mock_instance
             
@@ -52,7 +52,7 @@ class TestDetectorApp:
             
     def test_predict_text_function(self):
         """Test predict_text wrapper function"""
-        with patch('src.detector_app.get_detector') as mock_get_detector:
+        with patch('ai_detector.detector_app.get_detector') as mock_get_detector:
             mock_detector = Mock()
             mock_result = {
                 'prediction': 'AI-generated',
@@ -73,7 +73,7 @@ class TestDetectorApp:
 class TestCLIArguments:
     """Test CLI argument parsing and handling"""
     
-    @patch('src.detector_app.get_detector')
+    @patch('ai_detector.detector_app.get_detector')
     def test_main_with_text_argument(self, mock_get_detector):
         """Test main function with text argument"""
         mock_detector = Mock()
@@ -101,7 +101,7 @@ class TestCLIArguments:
             assert any('Human-generated' in call for call in print_calls)
             assert any('0.9500' in call for call in print_calls)
             
-    @patch('src.detector_app.get_detector')
+    @patch('ai_detector.detector_app.get_detector')
     def test_main_with_stdin_input(self, mock_get_detector):
         """Test main function with stdin input"""
         mock_detector = Mock()
@@ -126,7 +126,7 @@ class TestCLIArguments:
             
             mock_detector.predict.assert_called_once_with('input from stdin', display_text=False)
             
-    @patch('src.detector_app.get_detector')
+    @patch('ai_detector.detector_app.get_detector')
     def test_main_with_mode_arguments(self, mock_get_detector):
         """Test main function with different mode arguments"""
         mock_detector = Mock()
@@ -147,7 +147,7 @@ class TestCLIArguments:
                 'low-fpr'
             )
             
-    @patch('src.detector_app.get_detector')
+    @patch('ai_detector.detector_app.get_detector')
     def test_main_with_custom_models(self, mock_get_detector):
         """Test main function with custom model arguments"""
         mock_detector = Mock()
@@ -172,7 +172,7 @@ class TestCLIArguments:
                 'accuracy'
             )
             
-    @patch('src.detector_app.get_detector')
+    @patch('ai_detector.detector_app.get_detector')
     def test_main_display_highlights(self, mock_get_detector):
         """Test main function with display highlights option"""
         mock_detector = Mock()
@@ -202,7 +202,7 @@ class TestCLIArguments:
 class TestInteractiveMode:
     """Test interactive mode functionality"""
     
-    @patch('src.detector_app.get_detector')
+    @patch('ai_detector.detector_app.get_detector')
     def test_interactive_mode_basic(self, mock_get_detector):
         """Test basic interactive mode functionality"""
         mock_detector = Mock()
@@ -234,7 +234,7 @@ class TestInteractiveMode:
             assert any('AI-generated' in call for call in print_calls)
             assert any('Goodbye!' in call for call in print_calls)
             
-    @patch('src.detector_app.get_detector')
+    @patch('ai_detector.detector_app.get_detector')
     def test_interactive_mode_empty_input(self, mock_get_detector):
         """Test interactive mode handles empty input"""
         mock_detector = Mock()
@@ -253,7 +253,7 @@ class TestInteractiveMode:
             # Detector should not be called for empty input
             mock_detector.predict.assert_not_called()
             
-    @patch('src.detector_app.get_detector') 
+    @patch('ai_detector.detector_app.get_detector') 
     def test_interactive_mode_keyboard_interrupt(self, mock_get_detector):
         """Test interactive mode handles keyboard interrupt gracefully"""
         mock_detector = Mock()
