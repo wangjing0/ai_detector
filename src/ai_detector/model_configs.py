@@ -31,13 +31,13 @@ MODEL_CONFIGS: Dict[str, Dict[str, str]] = {
     "llama_2_7b": {
         "observer": "NousResearch/Llama-2-7b-hf",
         "performer": "NousResearch/Llama-2-7b-chat-hf",
-        "description": "Meta Llama 2 7B base and chat models"
+        "description": "Meta Llama 2 7B base and chat models (full precision, will auto-quantize)"
     },
     
     "llama_2_13b": {
         "observer": "NousResearch/Llama-2-13b-hf", 
         "performer": "NousResearch/Llama-2-13b-chat-hf",
-        "description": "Meta Llama 2 13B base and chat models"
+        "description": "Meta Llama 2 13B base and chat models (full precision, will auto-quantize)"
     },
     
     "mistral_7b": {

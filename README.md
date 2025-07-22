@@ -16,21 +16,15 @@ A Python package for detecting AI-generated text using dual language model analy
 Install core dependencies with specific versions to avoid conflicts:
 
 ```bash
-pip install torch==2.0.1 transformers==4.49.0 bitsandbytes==0.41.3
-```
-
-
-```bash
 git clone https://github.com/wangjing0/ai_detector.git
 cd ai_detector
+pip install -e .
 ```
 
+or use poetry:
 ```bash
-# Install in development mode
-pip install -e .
-
-# Or install from requirements
-pip install -r requirements.txt
+poetry lock
+poetry install
 ```
 
 > **Note**: This package requires specific PyTorch and Transformers versions due to dependency compatibility requirements.
@@ -44,10 +38,19 @@ pip install -r requirements.txt
 ai-detector "Your text here"
 
 # Interactive mode for multiple texts
-ai-detector --interactive
+ai-detector --interactive --display-highlights
 
 # Display word-level highlights for suspicious content
 ai-detector --display-highlights "Text to analyze"
+
+# List available model configurations
+ai-detector --list-configs
+
+# Get model configuration recommendation
+ai-detector --recommend-config --vram-gb 16 --speed-priority
+
+# Use a predefined model configuration
+ai-detector --model-config llama_3_1_8b
 ```
 
 ### Python API
@@ -66,15 +69,6 @@ result = detector.predict("Your text here")
 # Display results
 print(f"Prediction: {result['prediction']}")
 print(f"Confidence: {result['confidence']:.2f}")
-```
-
-## Development
-
-### Setup Development Environment
-
-```bash
-# Install with development dependencies
-poetry install --with dev
 ```
 
 ## License

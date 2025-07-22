@@ -3,8 +3,12 @@ import os
 import numpy, torch, transformers
 
 # Disable flash attention to avoid compatibility issues
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from IPython.display import display, Markdown
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+try:
+    from IPython.display import display, Markdown
+    IPYTHON_AVAILABLE = True
+except ImportError:
+    IPYTHON_AVAILABLE = False
 # special words and puctuations
 from nltk.tokenize import word_tokenize
 import nltk
@@ -17,6 +21,53 @@ torch.set_grad_enabled(False)
 ACCURACY_THRESHOLD = 0.9015310749276843  # optimized for f1-score
 FPR_THRESHOLD = 0.8536432310785527  # optimized for low-fpr [chosen at 0.01%]
 
+# Terminal color codes
+class Colors:
+    YELLOW_BG = '\033[43m'  # Yellow background
+    BOLD = '\033[1m'        # Bold text
+    END = '\033[0m'         # Reset to default
+
+def format_text_for_terminal(html_text: str) -> str:
+    """
+    Convert HTML highlighting to terminal color codes.
+    
+    Args:
+        html_text: Text with HTML span tags for highlighting
+        
+    Returns:
+        Text with terminal color codes
+    """
+    import re
+    
+    # Replace HTML highlight spans with terminal colors
+    # Pattern matches both single and double quotes: <span style='background-color: #FFFF00'>word</span>
+    pattern = r"<span style=['\"]background-color: #FFFF00['\"]>(.*?)</span>"
+    
+    def replace_highlight(match):
+        word = match.group(1)
+        return f"{Colors.YELLOW_BG}{Colors.BOLD}{word}{Colors.END}"
+    
+    # Replace all HTML highlights with terminal colors
+    terminal_text = re.sub(pattern, replace_highlight, html_text)
+    
+    return terminal_text
+
+def print_highlighted_text(text: str, use_terminal_colors: bool = True):
+    """
+    Print text with highlighting, choosing appropriate format based on environment.
+    
+    Args:
+        text: Text with HTML highlighting
+        use_terminal_colors: Whether to use terminal colors (default: True)
+    """
+    if IPYTHON_AVAILABLE and not use_terminal_colors:
+        # Use IPython display in Jupyter notebooks
+        display(Markdown(text))
+    else:
+        # Use terminal colors for CLI
+        terminal_text = format_text_for_terminal(text)
+        print(terminal_text)
+
 
 class Detector(object):
     def __init__(self,
@@ -27,19 +78,33 @@ class Detector(object):
                  ) -> None:
         self.assert_tokenizer_consistency(observer_name_or_path, performer_name_or_path)
         self.threshold_mode(mode)
-        self.observer_model = AutoModelForCausalLM.from_pretrained(observer_name_or_path,
-                                                                   device_map="auto",
-                                                                   trust_remote_code=True,
-                                                                   load_in_4bit=True,
-                                                                   torch_dtype=torch.float16,
-                                                                   )
+        
+        # Check if models are already quantized (contain "bnb" or "4bit"/"8bit" in name)
+        observer_is_quantized = any(marker in observer_name_or_path.lower() 
+                                   for marker in ["bnb", "4bit", "8bit", "gptq", "awq"])
+        performer_is_quantized = any(marker in performer_name_or_path.lower() 
+                                    for marker in ["bnb", "4bit", "8bit", "gptq", "awq"])
+        
+        # Configure quantization only for non-pre-quantized models
+        model_kwargs = {
+            "device_map": "auto",
+            "trust_remote_code": True,
+            "torch_dtype": torch.float16,
+        }
+        
+        if not observer_is_quantized and not performer_is_quantized:
+            # Apply 4-bit quantization for full precision models
+            bnb_config = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_compute_dtype=torch.float16,
+            )
+            model_kwargs["quantization_config"] = bnb_config
+        
+        self.observer_model = AutoModelForCausalLM.from_pretrained(observer_name_or_path, **model_kwargs)
         self.DEVICE_1 = self.observer_model.device
-        self.performer_model = AutoModelForCausalLM.from_pretrained(performer_name_or_path,
-                                                                    device_map="auto",
-                                                                    trust_remote_code=True,
-                                                                    load_in_4bit=True,
-                                                                    torch_dtype=torch.float16,
-                                                                    )
+        self.performer_model = AutoModelForCausalLM.from_pretrained(performer_name_or_path, **model_kwargs)
         self.DEVICE_2 = self.performer_model.device
         self.observer_model.eval()
         self.performer_model.eval()
@@ -162,12 +227,14 @@ class Detector(object):
                         ).tolist()
         if display_text:
             if isinstance(colored_texts, str):
-                #Colored_text = colored_texts  if preds == "AI-generated" else input_text
-                display(Markdown(colored_texts))
+                # Show highlighted text for AI-generated, plain text for human-generated
+                text_to_show = colored_texts if preds == "AI-generated" else input_text
+                print_highlighted_text(text_to_show)
             else:
-                #Colored_text = [colored_texts[i] if pred == "AI-generated" else input_text[i] for i, pred in enumerate(preds)]
+                # Handle batch text
                 for i, text in enumerate(colored_texts):
-                    display(Markdown(text))
+                    text_to_show = colored_texts[i] if preds[i] == "AI-generated" else input_text[i]
+                    print_highlighted_text(text_to_show)
 
         return {"prediction": preds, 
                 "score": scores,
@@ -214,9 +281,9 @@ if __name__ == "__main__":
         if text:
             result = detector.predict(text, display_text=False)
             if result['prediction'].startswith('AI'):
-                display(Markdown(result['colored_text']))
+                print_highlighted_text(result['colored_text'])
             else:
-                display(Markdown(result['text']))
+                print(result['text'])
             
             print(f"Score: {result['score'] :.3f}, Confidence: {result['confidence']:.3f}, Prediction: {result['prediction']}")
             prediction.append(result)

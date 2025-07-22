@@ -23,7 +23,8 @@ _detector = None
 
 def get_detector(observer_model='unsloth/Meta-Llama-3.1-8B-bnb-4bit',
                 performer_model='unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit',
-                mode='accuracy'):
+                mode='accuracy'
+) -> Detector:
     """Get or create detector instance (singleton pattern)"""
     global _detector
     if _detector is None:
@@ -47,7 +48,7 @@ def main():
     parser.add_argument('--mode', choices=['accuracy', 'low-fpr'], default='accuracy',
                         help='Detection mode (default: accuracy)')
     parser.add_argument('--display-highlights', action='store_true',
-                        help='Display highlighted suspicious words')
+                        help='Display highlighted suspicious words (works with both single and interactive mode)')
     parser.add_argument('--observer-model', default='unsloth/Meta-Llama-3.1-8B-bnb-4bit',
                         help='Observer model path or HuggingFace model ID')
     parser.add_argument('--performer-model', default='unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit',
@@ -63,7 +64,7 @@ def main():
     parser.add_argument('--speed-priority', action='store_true',
                         help='Prioritize inference speed in model recommendation')
     parser.add_argument('--interactive', action='store_true',
-                        help='Run in interactive mode for multiple predictions')
+                        help='Run in interactive mode for multiple predictions (can be combined with --display-highlights)')
 
     args = parser.parse_args()
     
@@ -114,6 +115,8 @@ def main():
     
     if args.interactive:
         print("\n=== Interactive Mode ===")
+        if args.display_highlights:
+            print("Highlighting enabled - suspicious words will be highlighted for AI-generated text")
         print("Enter text to analyze (type 'quit' to exit):")
         while True:
             try:
@@ -127,6 +130,12 @@ def main():
                 print(f"Prediction: {result['prediction']}")
                 print(f"Score: {result['score']:.4f}")
                 print(f"Confidence: {result['confidence']:.4f}")
+                
+                if args.display_highlights and result['prediction'] == 'AI-generated':
+                    print("(Highlighted suspicious words shown above)")
+                elif args.display_highlights and result['prediction'] == 'Human-generated':
+                    print("(No highlighting for human-generated text)")
+                
                 print("-" * 50)
             except KeyboardInterrupt:
                 break
