@@ -53,7 +53,13 @@ ai-detector --recommend-config --vram-gb 16 --speed-priority
 ai-detector --model-config llama_3_1_8b
 ```
 
-### Python API
+### Development
+
+```bash 
+python -m ai_detector.detector_app --interactive --display-highlights
+```
+
+or
 
 ```python
 from src.detector import Detector
@@ -73,4 +79,4 @@ print(f"Confidence: {result['confidence']:.2f}")
 
 ## License
 
-MIT License
+MIT License (c) 2025 Jing Wang
