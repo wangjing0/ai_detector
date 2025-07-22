@@ -186,7 +186,7 @@ class Detector(object):
         
         return agg_ce, ce
 
-    def compute_score(self, input_text: Union[list[str], str]) -> Tuple:
+    def compute_score(self, input_text: Union[list[str], str], threshold: float) -> Tuple:
         batch = [input_text] if isinstance(input_text, str) else input_text
         encodings = self._tokenize(batch)
         observer_logits, performer_logits = self._get_logits(encodings)
@@ -196,14 +196,14 @@ class Detector(object):
                                             encodings.to(self.DEVICE_1), 
                                             self.tokenizer.pad_token_id)
 
-        #ppl, perplexity the lower the AI-generated
-        #x_ppl, cross-perplexity the higher the AI-generated
+        #ppl, perplexity the lower the more AI-generated
+        #x_ppl, cross-perplexity the lower the more human-generated
         scores = ppl / x_ppl
         scores = scores.tolist()
 
         colored_texts = []
         for text_id, enc in enumerate(encodings.input_ids):
-            indices = ce[text_id].to("cpu").float().numpy() < 0.7*ppl[text_id]
+            indices = ce[text_id].to("cpu").float().numpy() < threshold*ppl[text_id]
             colored_text = []
             for i in range(len(indices)):
                 tok = self.tokenizer.decode(enc[i], skip_special_tokens=True)
@@ -218,8 +218,8 @@ class Detector(object):
 
         return (scores[0],colored_texts[0]) if isinstance(input_text, str) else (scores, colored_texts)
 
-    def predict(self, input_text: Union[list[str], str], display_text:bool=False) -> Dict:
-        scores, colored_texts = self.compute_score(input_text)
+    def predict(self, input_text: Union[list[str], str], display_text:bool=False, threshold: float = 0.7) -> Dict:
+        scores, colored_texts = self.compute_score(input_text, threshold)
         confidence = numpy.minimum(1.0,  abs(numpy.array(scores)-self.threshold)/0.20 + 0.5) # cutoff at 1.0
         preds = numpy.where(numpy.array(scores) < self.threshold,
                         "AI-generated",
