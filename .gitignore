@@ -67,3 +67,4 @@ temp/
 .env.production
 .env.staging
 CLAUDE.md
+/data/*
