@@ -1,7 +1,8 @@
 from typing import Union, Tuple, List, Dict
 import os
-import numpy, torch, transformers
-
+import pandas,numpy, torch, transformers
+from ai_detector.metrics import get_optimal_threshold, get_roc_optimal_metrics
+import logging
 # Disable flash attention to avoid compatibility issues
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 try:
@@ -10,9 +11,8 @@ try:
 except ImportError:
     IPYTHON_AVAILABLE = False
 # special words and puctuations
-
 import string
-
+logger = logging.getLogger(__name__)
 torch.set_grad_enabled(False)
 
 # selected using Falcon-7B and Falcon-7B-Instruct at bfloat16
@@ -64,7 +64,7 @@ def print_highlighted_text(text: str, use_terminal_colors: bool = True):
     else:
         # Use terminal colors for CLI
         terminal_text = format_text_for_terminal(text)
-        print(terminal_text)
+        logger.info(terminal_text)
 
 
 class Detector(object):
@@ -114,6 +114,15 @@ class Detector(object):
         self.ce_loss_fn = torch.nn.CrossEntropyLoss(reduction="none")
         self.common_vocab = {'the', 'also', 'a', 'an', 'of', 'in', 'on', 'at', 'for', 'with', 'to', 'and', 'or', 'but', 'nor', 'so', 'yet'}
     
+    def threshold_mode(self, mode: str) -> None:
+        if mode == "low-fpr":
+            self.threshold = FPR_THRESHOLD
+        elif mode == "accuracy":
+            self.threshold = ACCURACY_THRESHOLD
+        elif mode == "auto":
+            self.threshold = None
+            raise Warning(f"Bring your groundtruth labels and scores to get the optimal threshold")
+
     def assert_tokenizer_consistency(self,model_id_1, model_id_2):
         identical_tokenizers = (
                 AutoTokenizer.from_pretrained(model_id_1).vocab
@@ -122,13 +131,21 @@ class Detector(object):
         if not identical_tokenizers:
             raise ValueError(f"Tokenizers are not identical for {model_id_1} and {model_id_2}.")
 
-    def threshold_mode(self, mode: str) -> None:
-        if mode == "low-fpr":
-            self.threshold = FPR_THRESHOLD
-        elif mode == "accuracy":
-            self.threshold = ACCURACY_THRESHOLD
+
+    def get_optimal_threshold(self, labels: list[int], scores: list[float], mode: str = "accuracy") -> bool:
+        """hyperparameter tuning, find the optimal threshold for the given mode"""
+
+        if mode == "accuracy":
+            optimal_threshold = get_optimal_threshold(labels, scores, 'accuracy')
+        elif mode == "low-fpr":
+            optimal_threshold = get_roc_optimal_metrics(labels, scores)["threshold_at_fpr_0_01"]
         else:
-            raise ValueError(f"Invalid mode: {mode}")
+            raise Warning(f"Invalid mode: {mode}, please use 'accuracy' or 'low-fpr'")
+            return False
+        
+        logger.info(f"Optimal threshold: {optimal_threshold}")
+        self.threshold = optimal_threshold
+        return True
 
     def _tokenize(self, batch: list[str]) -> transformers.BatchEncoding:
         batch_size = len(batch)
@@ -180,11 +197,11 @@ class Detector(object):
         ce = self.ce_loss_fn(input=q_scores, target=p_proba).view(-1, total_tokens_available)
         padding_mask = (encodings.input_ids != pad_token_id).type(torch.uint8)
         agg_ce = ((ce * padding_mask).sum(1) / padding_mask.sum(1)).to("cpu").float().numpy()
-        #print("agg_ce:", agg_ce)
+        #("agg_ce:", agg_ce)
         
         return agg_ce, ce
 
-    def compute_score(self, input_text: Union[list[str], str], threshold: float) -> Tuple:
+    def compute_score(self, input_text: Union[list[str], str], color_threshold: float) -> Tuple:
         batch = [input_text] if isinstance(input_text, str) else input_text
         encodings = self._tokenize(batch)
         observer_logits, performer_logits = self._get_logits(encodings)
@@ -201,7 +218,7 @@ class Detector(object):
 
         colored_texts = []
         for text_id, enc in enumerate(encodings.input_ids):
-            indices = ce[text_id].to("cpu").float().numpy() < threshold*ppl[text_id]
+            indices = ce[text_id].to("cpu").float().numpy() < color_threshold*ppl[text_id]
             colored_text = []
             for i in range(len(indices)):
                 tok = self.tokenizer.decode(enc[i], skip_special_tokens=True)
@@ -216,8 +233,8 @@ class Detector(object):
 
         return (scores[0],colored_texts[0]) if isinstance(input_text, str) else (scores, colored_texts)
 
-    def predict(self, input_text: Union[list[str], str], display_text:bool=False, threshold: float = 0.7) -> Dict:
-        scores, colored_texts = self.compute_score(input_text, threshold)
+    def predict(self, input_text: Union[list[str], str], display_text:bool=False, color_threshold: float = 0.1) -> Dict:
+        scores, colored_texts = self.compute_score(input_text, color_threshold)
         confidence = numpy.minimum(1.0,  abs(numpy.array(scores)-self.threshold)/0.20 + 0.5) # cutoff at 1.0
         preds = numpy.where(numpy.array(scores) < self.threshold,
                         "AI-generated",
@@ -246,11 +263,8 @@ if __name__ == "__main__":
     import pandas
     from tqdm import tqdm
 
-    detector = Detector(observer_name_or_path="unsloth/Meta-Llama-3.1-8B-bnb-4bit",
-              performer_name_or_path="unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
-              mode='accuracy',
-             )
-    print(detector.predict("This is a test."))
+    detector = Detector(mode='accuracy')
+    logger.info(detector.predict("This is a test."))
 
     doc = '''
     We are witnessing a paradigm shift, as driving by this wave of Generative AI.  These new technologies are not only transforming how we approach complex and open-ended tasks with human natural language, but also reshaping our interactions with knowledge, in turn, influencing the evolution of AI itself. As knowledge workers, our adoption of LLMs is partly motivated by necessity, given that human labor is prohibitively difficult to scale. Traditional methods that rely on gold references or “vibe checks" have become less effective at distinguishing good content from low-quality material.  In this blog, we will explore several tasks where we have innovated the usage of AI to improve efficiency and effectiveness. Also, address some of the difficulties we encounters, areas for improvement and potential opportunities for future.
