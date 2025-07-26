@@ -1,10 +1,12 @@
 import numpy
+from typing import Any
 from sklearn.metrics import ( 
     f1_score,
     precision_score,
     recall_score,
     accuracy_score,
     roc_curve, 
+    roc_auc_score,
     auc,
     precision_recall_curve, 
     confusion_matrix,
@@ -30,7 +32,7 @@ def get_roc_optimal_metrics(real_labels, predicted_probs):
     threshold_at_fpr_0_01 = numpy.interp(0.01/100.0, fpr, thresholds)
 
     return {
-        "roc_auc": round(float(roc_auc), 4), 
+        "auc_roc": round(float(roc_auc), 4), 
         "optimal_threshold": round(float(optimal_threshold), 4), 
         "conf_matrix": conf_matrix.tolist(), 
         "precision": round(float(precision), 4), 
@@ -39,20 +41,6 @@ def get_roc_optimal_metrics(real_labels, predicted_probs):
         "accuracy": round(float(accuracy), 4), 
         "tpr_at_fpr_0_01": round(float(tpr_at_fpr_0_01), 4),
         "threshold_at_fpr_0_01": round(float(threshold_at_fpr_0_01), 4)
-    }
-
-
-def get_metrics(real_labels, predictions):
-    precision = precision_score(real_labels, predictions)
-    recall = recall_score(real_labels, predictions)
-    f1 = f1_score(real_labels, predictions)
-    accuracy = accuracy_score(real_labels, predictions)
-
-    return {
-        "precision": round(float(precision), 4), 
-        "recall": round(float(recall), 4), 
-        "f1": round(float(f1), 4), 
-        "accuracy": round(float(accuracy), 4)
     }
 
 
@@ -72,8 +60,23 @@ def get_optimal_threshold(real_labels, predicted_probs, mode: str = "accuracy"):
 def get_precision_recall_curve(real_labels, predicted_probs):
     precision, recall, _ = precision_recall_curve(real_labels, predicted_probs)
     pr_auc = auc(recall, precision)
+    auc_roc = roc_auc_score(real_labels, predicted_probs)
     return {
         "precision": precision.tolist(), 
         "recall": recall.tolist(), 
-        "pr_auc": round(float(pr_auc), 4)
+        "pr_auc": round(float(pr_auc), 4),
+        "auc_roc": round(float(auc_roc), 4)
+    }
+
+def get_metrics(real_labels, predictions, positive_label: Any = 1):
+    precision = precision_score(real_labels, predictions, pos_label=positive_label)
+    recall = recall_score(real_labels, predictions, pos_label=positive_label)
+    f1 = f1_score(real_labels, predictions, pos_label=positive_label)
+    accuracy = accuracy_score(real_labels, predictions)
+
+    return {
+        "precision": round(float(precision), 4), 
+        "recall": round(float(recall), 4), 
+        "f1": round(float(f1), 4), 
+        "accuracy": round(float(accuracy), 4),
     }

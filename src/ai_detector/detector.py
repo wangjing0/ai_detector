@@ -15,9 +15,8 @@ import string
 logger = logging.getLogger(__name__)
 torch.set_grad_enabled(False)
 
-# selected using Falcon-7B and Falcon-7B-Instruct at bfloat16
-ACCURACY_THRESHOLD = 0.9015310749276843  # optimized for f1-score
-FPR_THRESHOLD = 0.8536432310785527  # optimized for low-fpr [chosen at 0.01%]
+ACCURACY_THRESHOLD = 0.90  # optimized for f1-score
+FPR_THRESHOLD = 0.85  # optimized for low-fpr [chosen at 0.01%]
 
 # Terminal color codes
 class Colors:
@@ -69,8 +68,8 @@ def print_highlighted_text(text: str, use_terminal_colors: bool = True):
 
 class Detector(object):
     def __init__(self,
-                 observer_name_or_path: str = "google/gemma-2b",# "unsloth/Meta-Llama-3.1-8B-bnb-4bit",
-                 performer_name_or_path: str = "google/gemma-2b-it",# "unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
+                 observer_name_or_path: str = "google/gemma-2b",
+                 performer_name_or_path: str = "google/gemma-2b-it",
                  max_token_observed: int = 1024,
                  mode: str = "accuracy",
                  ) -> None:
@@ -132,8 +131,10 @@ class Detector(object):
             raise ValueError(f"Tokenizers are not identical for {model_id_1} and {model_id_2}.")
 
 
-    def get_optimal_threshold(self, labels: list[int], scores: list[float], mode: str = "accuracy") -> bool:
+    def get_optimal_threshold(self, labels: list[int], scores: list[float], mode: str = None) -> bool:
         """hyperparameter tuning, find the optimal threshold for the given mode"""
+        if mode is None:
+            mode = self.mode
 
         if mode == "accuracy":
             optimal_threshold = get_optimal_threshold(labels, scores, 'accuracy')
@@ -201,7 +202,10 @@ class Detector(object):
         
         return agg_ce, ce
 
-    def compute_score(self, input_text: Union[list[str], str], color_threshold: float) -> Tuple:
+    def compute_score(self, input_text: Union[list[str], str], color_threshold: float=0.1) -> Tuple:
+        """
+        highlight text that is more likely to be AI-generated, and Human-generated
+        """
         batch = [input_text] if isinstance(input_text, str) else input_text
         encodings = self._tokenize(batch)
         observer_logits, performer_logits = self._get_logits(encodings)
@@ -218,7 +222,13 @@ class Detector(object):
 
         colored_texts = []
         for text_id, enc in enumerate(encodings.input_ids):
-            indices = ce[text_id].to("cpu").float().numpy() < color_threshold*ppl[text_id]
+            # ce: cross-entropy loss, the lower the more AI-generated
+            indices_AI = ce[text_id].to("cpu").float().numpy() < color_threshold*ppl[text_id]
+            # the higher the more human-generated
+            indices_Human = ce[text_id].to("cpu").float().numpy() > (1-color_threshold)*ppl[text_id]
+
+            indices = indices_AI | indices_Human
+
             colored_text = []
             for i in range(len(indices)):
                 tok = self.tokenizer.decode(enc[i], skip_special_tokens=True)
@@ -226,7 +236,10 @@ class Detector(object):
                 if indices[i] and  \
                     (tok not in string.punctuation) and \
                         (tok not in self.common_vocab):
-                    colored_text.append(f"<span style='background-color: #FFFF00'>{tok}</span>")
+                    if indices_AI[i]:
+                        colored_text.append(f"<span style='background-color: #FFFF00'>{tok}</span>") # yellow
+                    else:
+                        colored_text.append(f"<span style='background-color: #90EE90'>{tok}</span>") # green
                 else:
                     colored_text.append(tok)
             colored_texts.append(" ".join(colored_text))
@@ -257,7 +270,6 @@ class Detector(object):
                 "colored_text": colored_texts,
                 "text": input_text
             }
-
 
 if __name__ == "__main__":
     import pandas
