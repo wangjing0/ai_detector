@@ -10,9 +10,7 @@ try:
 except ImportError:
     IPYTHON_AVAILABLE = False
 # special words and puctuations
-from nltk.tokenize import word_tokenize
-import nltk
-nltk.download('punkt')
+
 import string
 
 torch.set_grad_enabled(False)
@@ -71,8 +69,8 @@ def print_highlighted_text(text: str, use_terminal_colors: bool = True):
 
 class Detector(object):
     def __init__(self,
-                 observer_name_or_path: str = "unsloth/Meta-Llama-3.1-8B-bnb-4bit",
-                 performer_name_or_path: str = "unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
+                 observer_name_or_path: str = "google/gemma-2b",# "unsloth/Meta-Llama-3.1-8B-bnb-4bit",
+                 performer_name_or_path: str = "google/gemma-2b-it",# "unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
                  max_token_observed: int = 1024,
                  mode: str = "accuracy",
                  ) -> None:
