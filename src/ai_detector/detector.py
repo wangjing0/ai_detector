@@ -208,10 +208,10 @@ class Detector(object):
         # will be cancelled out by ppl/x_ppl
         ppl = ( shifted_ce * shifted_attention_mask).sum(1) / shifted_attention_mask.sum(1)
         ppl = ppl.to("cpu").float().numpy()
-        # pad the first token with 0
+        # pad the first token 
         shifted_ce = shifted_ce.to("cpu").float().numpy()
-        shifted_ce = numpy.pad(shifted_ce, (1, 0), mode='constant', constant_values=0)
-        return ppl, shifted_ce
+        ce =[ [numpy.inf] + list(_ce) for _ce in shifted_ce]
+        return ppl, ce
 
     def compute_score(self, input_text: Union[list[str], str], color_threshold: float=0.1) -> Tuple:
         """
@@ -222,34 +222,30 @@ class Detector(object):
         observer_logits, performer_logits = self._get_logits(encodings)
         ppl, ce = self.perplexity(encodings, performer_logits)
         x_ppl, x_ce = self.entropy(observer_logits.to(self.DEVICE_1), 
-                                           performer_logits.to(self.DEVICE_1),
-                                            encodings.to(self.DEVICE_1), 
-                                            self.tokenizer.pad_token_id)
+                                    performer_logits.to(self.DEVICE_1),
+                                    encodings.to(self.DEVICE_1), 
+                                    self.tokenizer.pad_token_id
+                    )
 
         #ppl, perplexity the lower the more AI-generated
         #x_ppl, cross-perplexity the lower the more human-generated
-        scores = ppl / x_ppl
-        scores = scores.tolist()
+        scores = (ppl / x_ppl).tolist()
 
         colored_texts = []
         for text_id, enc in enumerate(encodings.input_ids):
             # ce: cross-entropy loss, the lower the more AI-generated
-            indices_AI = ce[text_id] <= color_threshold*ppl[text_id]
-            #indices_AI = ce[text_id].to("cpu").float().numpy() < color_threshold*ppl[text_id]
-            # the higher the more human-generated
-            indices_Human = ce[text_id] > (1-color_threshold)*ppl[text_id]
-            #indices_Human = ce[text_id].to("cpu").float().numpy() > (1-color_threshold)*ppl[text_id]
-
-            indices = indices_AI | indices_Human
+            indices_AI =  ce[text_id] < color_threshold*ppl[text_id]
+            #indices_Human =  ce[text_id] > 2.0*x_ppl[text_id]
+            indices = indices_AI #| indices_Human
 
             colored_text = []
-            for i in range(len(indices)):
-                tok = self.tokenizer.decode(enc[i], skip_special_tokens=True)
+            for idx in range(len(enc)):
+                tok = self.tokenizer.decode(enc[idx], skip_special_tokens=True)
                 tok = tok.strip('-').strip()
-                if indices[i] and  \
+                if indices[idx] and  \
                     (tok not in string.punctuation) and \
                         (tok not in self.common_vocab):
-                    if indices_AI[i]:
+                    if indices_AI[idx]:
                         colored_text.append(f"<span style='background-color: #FFFF00'>{tok}</span>") # yellow
                     else:
                         colored_text.append(f"<span style='background-color: #90EE90'>{tok}</span>") # green
