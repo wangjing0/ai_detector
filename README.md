@@ -1,11 +1,11 @@
 # AI Text Detector
 
-A Python package for detecting AI-generated text using dual language model analysis with perplexity and cross-entropy metrics.
+Zero-shot detecting AI-generated content with appropriate baselines.
 
 ## Features
 
 - Detects AI-generated text using perplexity and cross-entropy analysis
-- Supports multiple detection modes (accuracy vs low false positive rate)
+- Supports multiple detection modes (accuracy vs low false-positive-rate)
 - Highlights suspicious words in AI-generated content
 - Command-line interface and interactive mode for multiple predictions
 
@@ -65,8 +65,8 @@ or
 from src.detector import Detector
 
 # Initialize detector with preferred models and metrics mode
-detector = Detector(observer_name_or_path="unsloth/Meta-Llama-3.1-8B-bnb-4bit",
-              performer_name_or_path="unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
+detector = Detector(observer_name_or_path="google/gemma-2b",
+              performer_name_or_path="google/gemma-2b-it",
               mode='accuracy')
 
 # Analyze text
@@ -74,7 +74,8 @@ result = detector.predict("Your text here")
 
 # Display results
 print(f"Prediction: {result['prediction']}")
-print(f"Confidence: {result['confidence']:.2f}")
+print(f"Score: {result['score'] :.3f}")
+print(f"Confidence: {result['confidence']:.3f}")
 ```
 
 ## License
