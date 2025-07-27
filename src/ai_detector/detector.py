@@ -5,6 +5,7 @@ from ai_detector.metrics import get_optimal_threshold, get_roc_optimal_metrics
 import logging
 # Disable flash attention to avoid compatibility issues
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+from gc import collect as gc_collect
 try:
     from IPython.display import display, Markdown
     IPYTHON_AVAILABLE = True
@@ -169,19 +170,6 @@ class Detector(object):
         
         return observer_logits, performer_logits
 
-    def perplexity(self,
-                encodings: transformers.BatchEncoding,
-                logits: torch.Tensor,
-                temperature: float = 1.0) -> Tuple:
-        shifted_logits = logits[..., :-1, :].contiguous() / temperature
-        shifted_labels = encodings.input_ids[..., 1:].contiguous()
-        shifted_attention_mask = encodings.attention_mask[..., 1:].contiguous()
-        shifted_ce = self.ce_loss_fn(shifted_logits.transpose(1, 2), shifted_labels)
-        ppl = ( shifted_ce * shifted_attention_mask).sum(1) / shifted_attention_mask.sum(1)
-        ppl = ppl.to("cpu").float().numpy()
-
-        return ppl, shifted_ce
-    
     def entropy(self, 
                 p_logits: torch.Tensor,
                 q_logits: torch.Tensor,
@@ -199,8 +187,31 @@ class Detector(object):
         padding_mask = (encodings.input_ids != pad_token_id).type(torch.uint8)
         agg_ce = ((ce * padding_mask).sum(1) / padding_mask.sum(1)).to("cpu").float().numpy()
         #("agg_ce:", agg_ce)
-        
-        return agg_ce, ce
+        return agg_ce, ce.cpu().float().numpy()
+
+    def perplexity(self,
+                encodings: transformers.BatchEncoding,
+                logits: torch.Tensor,
+                temperature: float = 1.0) -> Tuple:
+        """
+        encodings: tokenized input
+        logits: model output logits for next token prediction
+        temperature: temperature for softmax
+        ppl: perplexity
+        shifted_ce: cross-entropy loss between performer model and tested text.
+        """
+        shifted_logits = logits[..., :-1, :].contiguous() / temperature
+        shifted_labels = encodings.input_ids[..., 1:].contiguous()
+        shifted_attention_mask = encodings.attention_mask[..., 1:].contiguous()
+        shifted_ce = self.ce_loss_fn(shifted_logits.transpose(1, 2), shifted_labels)
+        # here perplexity is the average cross-entropy loss of the next token prediction, not ppl=exp(ce)
+        # will be cancelled out by ppl/x_ppl
+        ppl = ( shifted_ce * shifted_attention_mask).sum(1) / shifted_attention_mask.sum(1)
+        ppl = ppl.to("cpu").float().numpy()
+        # pad the first token with 0
+        shifted_ce = shifted_ce.to("cpu").float().numpy()
+        shifted_ce = numpy.pad(shifted_ce, (1, 0), mode='constant', constant_values=0)
+        return ppl, shifted_ce
 
     def compute_score(self, input_text: Union[list[str], str], color_threshold: float=0.1) -> Tuple:
         """
@@ -223,9 +234,11 @@ class Detector(object):
         colored_texts = []
         for text_id, enc in enumerate(encodings.input_ids):
             # ce: cross-entropy loss, the lower the more AI-generated
-            indices_AI = ce[text_id].to("cpu").float().numpy() < color_threshold*ppl[text_id]
+            indices_AI = ce[text_id] <= color_threshold*ppl[text_id]
+            #indices_AI = ce[text_id].to("cpu").float().numpy() < color_threshold*ppl[text_id]
             # the higher the more human-generated
-            indices_Human = ce[text_id].to("cpu").float().numpy() > (1-color_threshold)*ppl[text_id]
+            indices_Human = ce[text_id] > (1-color_threshold)*ppl[text_id]
+            #indices_Human = ce[text_id].to("cpu").float().numpy() > (1-color_threshold)*ppl[text_id]
 
             indices = indices_AI | indices_Human
 
@@ -264,6 +277,11 @@ class Detector(object):
                     text_to_show = colored_texts[i] if preds[i] == "AI-generated" else input_text[i]
                     print_highlighted_text(text_to_show)
 
+        # Clear GPU memory after prediction
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        gc_collect()
+        
         return {"prediction": preds, 
                 "score": scores,
                 "confidence": confidence, 
